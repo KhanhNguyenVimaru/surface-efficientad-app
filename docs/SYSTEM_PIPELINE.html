@@ -1,0 +1,125 @@
+﻿<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EfficientAD System Pipeline</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #4b5563;
+      --border: #dbe2ea;
+      --accent: #0b6bcb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(180deg, #eef4fb 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      color: #0f172a;
+    }
+
+    p.lead {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04);
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    .mermaid {
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>EfficientAD Web App - System Pipeline</h1>
+    <p class="lead">Sơ đồ pipeline tổng quan và luồng xử lý chi tiết của endpoint <code>/predict</code>.</p>
+
+    <section class="section">
+      <h2>1) Luồng tổng quan</h2>
+      <div class="mermaid">
+flowchart TD
+    A[User mở Nuxt Frontend] --> B[Upload ảnh + chọn threshold]
+    B --> C[POST /predict multipart form]
+    C --> D[FastAPI validate input]
+    D --> E[Load ảnh PIL RGB]
+    E --> F[Run EfficientAD inference từ checkpoints/capsule.ckpt]
+    F --> G[Trích xuất pred_score / pred_label / anomaly_map / pred_mask]
+    G --> H[Phân loại defect type]
+    H --> I[Tạo ảnh trực quan hóa\n anomaly map / overlay / mask overlay]
+    I --> J[Classical CV hậu xử lý\n đếm lỗi, contour, largest area]
+    J --> K[Trả JSON response chứa metadata + ảnh base64]
+    K --> L[Frontend hiển thị kết quả]
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>2) Chi tiết backend /predict</h2>
+      <div class="mermaid">
+flowchart TD
+    A[Nhận UploadFile image, threshold] --> B{anomalib import OK?}
+    B -- No --> B1[HTTP 500]
+    B -- Yes --> C{checkpoint capsule.ckpt tồn tại?}
+    C -- No --> C1[HTTP 400]
+    C -- Yes --> D{threshold >= 0?}
+    D -- No --> D1[HTTP 400]
+    D -- Yes --> E[Đọc bytes + parse ảnh]
+    E --> F{Ảnh hợp lệ?}
+    F -- No --> F1[HTTP 400]
+    F -- Yes --> G[Engine.predict]
+    G --> H{Inference thành công?}
+    H -- No --> H1[HTTP 500]
+    H -- Yes --> I[Chuẩn hóa output model]
+    I --> J[Classify GOOD/DEFECT + defect_type]
+    J --> K[Generate base64 visual outputs]
+    K --> L[Classical CV postprocess]
+    L --> M[Build PredictResponse]
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "default",
+      flowchart: {
+        curve: "basis",
+        htmlLabels: true,
+        useMaxWidth: true
+      }
+    });
+  </script>
+</body>
+</html>

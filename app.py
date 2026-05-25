@@ -439,6 +439,8 @@ async def predict(
             am_np = np.squeeze(am_np).astype(np.float32)
             if am_np.max() > 1.0:
                 am_np = am_np / 255.0
+            if am_np.shape[0] != pil_image.height or am_np.shape[1] != pil_image.width:
+                am_np = resize_array(am_np, pil_image.width, pil_image.height)
 
             cleaned_mask, defects = postprocess_anomaly_map(
                 am_np,
